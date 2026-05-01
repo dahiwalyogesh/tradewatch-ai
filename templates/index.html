@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TradeWatch — AI Trade Intelligence</title>
+  <meta name="description" content="AI-powered global trade intelligence. Supports Claude, GPT-4o, Gemini and Llama 3." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ══ SPLASH ══════════════════════════════ -->
+<div id="splash-screen">
+  <div class="globe-ring">
+    <div class="ring"></div><div class="ring2"></div><div class="ring3"></div>
+    <div class="core"><div class="core-dot"></div></div>
+  </div>
+  <div class="splash-title">Trade<span>Watch</span></div>
+  <div class="splash-sub">AI TRADE INTELLIGENCE</div>
+  <div class="progress-track"><div class="progress-fill"></div></div>
+  <div class="splash-status" id="splash-status">initialising...</div>
+</div>
+
+
+<!-- ══ API KEY SCREEN ══════════════════════ -->
+<div id="api-screen" style="display:none">
+  <div class="api-card">
+
+    <div class="api-logo">
+      <div class="api-logo-dot"></div>
+      <span>TradeWatch</span>
+    </div>
+
+    <h1>Choose your AI &amp; enter your key</h1>
+    <p>TradeWatch works with any major AI provider. Pick the one you already have a key for — all produce great results.</p>
+
+    <!-- Provider selector cards -->
+    <div class="provider-grid" id="provider-grid">
+
+      <div class="provider-card selected" data-provider="claude" onclick="selectProvider('claude')">
+        <div class="prov-top">
+          <div class="prov-logo" style="background:#d97706">A</div>
+          <span class="prov-free" style="display:none">FREE</span>
+        </div>
+        <div class="prov-name">Claude</div>
+        <div class="prov-company">Anthropic</div>
+        <div class="prov-model">claude-sonnet-4</div>
+        <div class="prov-link"><a href="https://platform.claude.com" target="_blank" rel="noopener">Get key →</a></div>
+      </div>
+
+      <div class="provider-card" data-provider="openai" onclick="selectProvider('openai')">
+        <div class="prov-top">
+          <div class="prov-logo" style="background:#10a37f">G</div>
+          <span class="prov-free" style="display:none">FREE</span>
+        </div>
+        <div class="prov-name">GPT-4o mini</div>
+        <div class="prov-company">OpenAI</div>
+        <div class="prov-model">gpt-4o-mini</div>
+        <div class="prov-link"><a href="https://platform.openai.com" target="_blank" rel="noopener">Get key →</a></div>
+      </div>
+
+      <div class="provider-card" data-provider="gemini" onclick="selectProvider('gemini')">
+        <div class="prov-top">
+          <div class="prov-logo" style="background:#4285f4">G</div>
+          <span class="prov-free">FREE</span>
+        </div>
+        <div class="prov-name">Gemini Flash</div>
+        <div class="prov-company">Google</div>
+        <div class="prov-model">gemini-1.5-flash</div>
+        <div class="prov-link"><a href="https://aistudio.google.com" target="_blank" rel="noopener">Get key →</a></div>
+      </div>
+
+      <div class="provider-card" data-provider="groq" onclick="selectProvider('groq')">
+        <div class="prov-top">
+          <div class="prov-logo" style="background:#f55036">G</div>
+          <span class="prov-free">FREE</span>
+        </div>
+        <div class="prov-name">Llama 3</div>
+        <div class="prov-company">Groq</div>
+        <div class="prov-model">llama3-70b-8192</div>
+        <div class="prov-link"><a href="https://console.groq.com" target="_blank" rel="noopener">Get key →</a></div>
+      </div>
+
+    </div>
+
+    <!-- Key input -->
+    <div class="api-field-wrap" style="margin-top:1.5rem">
+      <div class="key-input-row">
+        <input
+          class="api-key-field"
+          id="api-key-input"
+          type="password"
+          placeholder="Paste your API key here..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button class="api-submit-btn" id="api-submit-btn" onclick="submitApiKey()">
+          Launch →
+        </button>
+      </div>
+    </div>
+
+    <p class="api-error" id="api-error"></p>
+
+    <div class="api-security-note">
+      🔒 Your key is validated by the Python server and stored only in your browser session.
+      It is never logged, saved to a database, or shared.
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══ HOME PAGE ════════════════════════════ -->
+<div id="home-page" style="display:none">
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-logo"><div class="nav-dot"></div><span>TradeWatch</span></div>
+    <div class="nav-links">
+      <a href="#section-map">World Map</a>
+      <a href="#section-products">Products</a>
+      <a href="#section-table">Rankings</a>
+      <a href="#section-monitor">My Monitor</a>
+      <a href="#section-marketplace">Marketplace</a>  
+    </div>
+    <div class="nav-right">
+      <span class="nav-badge" id="nav-badge">AI active</span>
+      <span class="nav-provider" id="nav-provider"></span>
+      <button class="nav-btn" onclick="showApiScreen()">Change AI</button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">Live global trade data · 50+ countries · 10 products</div>
+      <h1 class="hero-title">Which nations drive<br>demand for your product?</h1>
+      <p class="hero-sub">
+        Click any product below to instantly see worldwide demand on the map.
+        Scroll down to explore rankings and set up your personal AI monitor.
+      </p>
+      <div class="hero-products" id="hero-products"></div>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="hs-val">50+</div><div class="hs-label">Countries</div></div>
+      <div class="hero-stat"><div class="hs-val">10</div><div class="hs-label">Products</div></div>
+      <div class="hero-stat"><div class="hs-val">AI</div><div class="hs-label">Powered</div></div>
+    </div>
+  </section>
+
+  <!-- WORLD MAP -->
+  <section class="section" id="section-map">
+    <div class="section-head">
+      <div>
+        <div class="section-label">Global demand map</div>
+        <h2 class="section-title" id="map-title">Semiconductor demand worldwide</h2>
+      </div>
+      <div class="map-tabs" id="map-tabs"></div>
+    </div>
+    <div class="map-panel">
+      <div id="world-map-wrap">
+        <svg id="world-svg" viewBox="0 0 900 460" aria-label="World product demand map"></svg>
+        <div class="map-tooltip" id="world-tooltip">
+          <div class="tt-flag" id="tt-flag"></div>
+          <div class="tt-name" id="tt-name"></div>
+          <div class="tt-row"><span>Demand index</span><span class="tt-val" id="tt-demand"></span></div>
+          <div class="tt-row"><span>Market size</span> <span class="tt-val" id="tt-market"></span></div>
+          <div class="tt-row"><span>Growth</span>      <span class="tt-val" id="tt-growth"></span></div>
+          <div class="tt-row"><span>Top product</span> <span class="tt-val" id="tt-top"></span></div>
+        </div>
+      </div>
+      <div class="map-legend">
+        <span class="leg-label">No data</span>
+        <div class="leg-scale">
+          <div class="leg-sq" style="background:#0d2035;border:1px solid rgba(255,255,255,.12)"></div>
+          <div class="leg-sq" style="background:#0f3a5c"></div>
+          <div class="leg-sq" style="background:#1a5c8a"></div>
+          <div class="leg-sq" style="background:#2080b8"></div>
+          <div class="leg-sq" style="background:#3dd9a4"></div>
+        </div>
+        <span class="leg-label">High demand</span>
+      </div>
+      <div class="top-grid" id="top-grid"></div>
+    </div>
+  </section>
+
+  <!-- PRODUCT CARDS -->
+  <section class="section" id="section-products">
+    <div class="section-head">
+      <div>
+        <div class="section-label">Product deep dive</div>
+        <h2 class="section-title">Top demand nations by product</h2>
+      </div>
+    </div>
+    <div class="product-grid" id="product-grid"></div>
+  </section>
+
+  <!-- RANKINGS TABLE -->
+  <section class="section" id="section-table">
+    <div class="section-head">
+      <div>
+        <div class="section-label">Country rankings</div>
+        <h2 class="section-title">Full world demand index</h2>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="search-input" id="table-search" type="text"
+          placeholder="Search country or region..."
+          oninput="window._search=this.value; renderTable()" />
+        <span class="table-count" id="table-count"></span>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="demand-table">
+        <thead id="table-head"></thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- PERSONAL MONITOR -->
+  <section class="section" id="section-monitor">
+    <div class="section-head">
+      <div>
+        <div class="section-label">Personalised AI monitor</div>
+        <h2 class="section-title">Set up your trade profile</h2>
+      </div>
+      <div class="active-ai-badge" id="active-ai-badge"></div>
+    </div>
+
+    <div id="monitor-setup" class="monitor-setup">
+      <div class="setup-row">
+        <div class="setup-field">
+          <label class="setup-label">Your industry</label>
+          <div class="chip-grid" id="chip-industry"></div>
+        </div>
+        <div class="setup-field">
+          <label class="setup-label">Home country</label>
+          <div class="chip-grid" id="chip-country"></div>
+        </div>
+      </div>
+      <div class="setup-field" style="margin-top:1.25rem">
+        <label class="setup-label">Trading partners <span style="color:var(--text3);font-weight:400">(up to 5)</span></label>
+        <div class="chip-grid" id="chip-partners"></div>
+      </div>
+      <div style="margin-top:1.5rem;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <button class="launch-btn" id="launch-btn" onclick="launchMonitor()">
+          Generate AI intelligence ↗
+        </button>
+        <span class="setup-note" id="setup-note"></span>
+      </div>
+      <p class="form-error" id="monitor-error"></p>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="monitor-dashboard" style="display:none">
+
+      <div class="metrics-row">
+        <div class="metric-card"><div class="mc-label">Total alerts</div><div class="mc-val" id="mc-total">0</div></div>
+        <div class="metric-card"><div class="mc-label">High impact</div><div class="mc-val danger" id="mc-high">0</div></div>
+        <div class="metric-card"><div class="mc-label">Avg relevance</div><div class="mc-val" id="mc-rel">0%</div></div>
+        <div class="metric-card"><div class="mc-label">Opportunities</div><div class="mc-val success" id="mc-opp">0</div></div>
+      </div>
+
+      <div class="two-col" style="margin-bottom:1rem">
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">AI risk score</div>
+            <div class="panel-sub">Calculated from alerts</div>
+          </div>
+          <div class="gauge-wrap">
+            <div class="gauge">
+              <svg viewBox="0 0 200 110" width="200" role="img" aria-label="Risk score gauge">
+                <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#1a2d42" stroke-width="18" stroke-linecap="round"/>
+                <path id="gauge-arc" d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#3dd9a4"
+                  stroke-width="18" stroke-linecap="round"
+                  stroke-dasharray="251" stroke-dashoffset="251"
+                  style="transition:stroke-dashoffset 1s ease, stroke 1s ease"/>
+              </svg>
+              <div class="gauge-center">
+                <div class="gauge-score" id="gauge-score">0</div>
+                <div class="gauge-label" id="gauge-label">—</div>
+              </div>
+            </div>
+            <div class="gauge-breakdown" id="gauge-breakdown"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Sentiment breakdown</div>
+            <div class="panel-sub">Current alerts</div>
+          </div>
+          <div class="chart-box">
+            <canvas id="sentiment-chart" role="img" aria-label="Sentiment chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="rec-panel" style="display:none;margin-bottom:1rem">
+        <div class="panel-head">
+          <div class="panel-title">AI recommendations</div>
+          <div class="panel-sub" id="rec-sub">Based on your alerts</div>
+        </div>
+        <div id="rec-body" class="rec-body"></div>
+      </div>
+
+      <div class="feed-layout">
+        <div class="feed-sidebar">
+          <div class="sidebar-heading">Filter</div>
+          <div id="filter-list"></div>
+          <div class="profile-card">
+            <div class="pc-label">Your profile</div>
+            <div class="pc-industry" id="pc-industry"></div>
+            <div class="pc-country"  id="pc-country"></div>
+            <div class="pc-partners" id="pc-partners"></div>
+          </div>
+          <div class="sidebar-actions">
+            <button onclick="generateDigest()">Email digest ✉</button>
+            <button onclick="exportPDF()">Export PDF ↓</button>
+            <button onclick="resetMonitor()">Reset profile</button>
+            <button id="refresh-btn" onclick="refreshNews()">AI refresh ↗</button>
+          </div>
+        </div>
+        <div class="news-feed" id="news-feed"></div>
+      </div>
+
+      <!-- Ask AI -->
+      <div class="panel" style="margin-top:1rem">
+        <div class="panel-head">
+          <div class="panel-title">Ask AI anything</div>
+          <div class="panel-sub" id="ask-provider-label">Trade assistant</div>
+        </div>
+        <div class="ask-wrap">
+          <div class="ask-history" id="ask-history"></div>
+          <div class="ask-row">
+            <input class="ask-input" id="ask-input" type="text"
+              placeholder="e.g. Which country has the highest demand for EV batteries?" />
+            <button class="ask-btn" id="ask-btn" onclick="askAI()">Ask ↗</button>
+          </div>
+          <div class="ask-chips">
+            <span onclick="fillAsk('What is my biggest trade risk right now?')">Biggest risk?</span>
+            <span onclick="fillAsk('Which partner has the best trade outlook?')">Best partner?</span>
+            <span onclick="fillAsk('Summarise all current alerts in 3 sentences')">Quick summary</span>
+            <span onclick="fillAsk('Give me 3 actions to take this week')">Action plan</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Email digest output -->
+      <div class="panel" id="digest-panel" style="display:none;margin-top:1rem">
+        <div class="panel-head">
+          <div class="panel-title">Weekly email digest</div>
+          <button onclick="copyDigest()" style="font-size:11px">Copy ✂</button>
+        </div>
+        <div id="digest-body" class="digest-body"></div>
+      </div>
+
+    </div><!-- /monitor-dashboard -->
+  </section>
+<!-- ════════════════════════════════════════
+     ADD THIS SECTION TO index.html
+     Place it AFTER the #section-monitor section
+     and BEFORE the footer
+════════════════════════════════════════ -->
+
+<!-- MARKETPLACE -->
+<section class="section" id="section-marketplace">
+  <div class="section-head">
+    <div>
+      <div class="section-label">Live trade marketplace</div>
+      <h2 class="section-title">Who wants to buy — and what</h2>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <!-- Filters -->
+      <div class="market-filters">
+        <select class="market-filter-select" id="filter-product" onchange="applyMarketFilter()">
+          <option value="">All products</option>
+          <!-- Filled by JS from SERVER_PRODUCTS -->
+        </select>
+        <select class="market-filter-select" id="filter-country" onchange="applyMarketFilter()">
+          <option value="">All countries</option>
+          <!-- Filled by JS from SERVER_COUNTRIES -->
+        </select>
+      </div>
+      <!-- Post button / auth prompt -->
+      <div id="post-btn-area">
+        <span class="auth-prompt">
+          <span onclick="showAuthModal('signup')">Sign up free</span> to post a request
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="market-stats" id="market-stats"></div>
+
+  <!-- Cards grid -->
+  <div class="market-grid" id="market-grid">
+    <div class="market-loading">Loading marketplace...</div>
+  </div>
+
+</section>
+  <footer class="footer">
+    &copy; 2026 TradeWatch &middot; Works with Claude · GPT-4o · Gemini · Llama 3 &middot;
+    <a href="https://https://github.com/dahiwalyogesh" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+
+</div><!-- /home-page -->
+
+<script>
+  var SERVER_PRODUCTS   = {{ products   | tojson }};
+  var SERVER_INDUSTRIES = {{ industries | tojson }};
+  var SERVER_COUNTRIES  = {{ countries  | tojson }};
+  var SERVER_PROVIDERS  = {{ providers  | tojson }};
+  var SERVER_CURRENCIES = {{ currencies | tojson }};
+  var SERVER_TIMELINES  = {{ timelines  | tojson }};
+</script>
+<script src="/static/app.js"></script>
+<script src="/static/marketplace.js"></script>
+
+</body>
+</html>

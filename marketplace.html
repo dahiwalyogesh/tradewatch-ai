@@ -1,0 +1,549 @@
+/**
+ * TradeWatch — marketplace.js
+ * Add this to your static/ folder
+ * Handles: auth, posting requests, browsing, contact forms
+ */
+
+"use strict";
+
+// ─────────────────────────────────────────
+//  Auth state
+// ─────────────────────────────────────────
+let currentUser = null;  // { name, company, country } or null
+
+async function checkLoginStatus() {
+  const resp = await fetch("/api/me");
+  const data = await resp.json();
+  if (data.logged_in) {
+    currentUser = data;
+    updateNavUser();
+    loadMarketplace();
+  } else {
+    currentUser = null;
+    updateNavUser();
+    loadMarketplace();
+  }
+}
+
+function updateNavUser() {
+  const navRight = document.getElementById("nav-right-area");
+  if (!navRight) return;
+
+  if (currentUser) {
+    navRight.innerHTML = `
+      <div class="user-menu">
+        <span class="user-name">👤 ${currentUser.name}</span>
+        <button class="logout-btn" onclick="logoutUser()">Sign out</button>
+      </div>`;
+  } else {
+    navRight.innerHTML = `
+      <button class="nav-btn" onclick="showAuthModal('login')">Sign in</button>
+      <button class="post-btn" onclick="showAuthModal('signup')" style="font-size:11px;padding:5px 12px">Join free →</button>`;
+  }
+}
+
+// ─────────────────────────────────────────
+//  Auth Modal
+// ─────────────────────────────────────────
+function showAuthModal(tab = "login") {
+  removeModal();
+  const SERVER_COUNTRIES = window.SERVER_COUNTRIES || [];
+
+  const modal = document.createElement("div");
+  modal.className = "modal-overlay";
+  modal.id = "auth-modal";
+  modal.innerHTML = `
+    <div class="modal-box" style="position:relative">
+      <button class="modal-close" onclick="removeModal()">✕</button>
+      <h2>TradeWatch Marketplace</h2>
+      <p>Sign up free to post buying requests and connect with sellers worldwide.</p>
+      <div class="modal-tabs">
+        <div class="modal-tab ${tab==='login'?'active':''}" onclick="switchTab('login')">Sign in</div>
+        <div class="modal-tab ${tab==='signup'?'active':''}" onclick="switchTab('signup')">Sign up free</div>
+      </div>
+
+      <!-- LOGIN -->
+      <div id="tab-login" style="display:${tab==='login'?'block':'none'}">
+        <div class="form-group">
+          <label>Email</label>
+          <input class="form-input" id="login-email" type="email" placeholder="you@company.com"/>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input class="form-input" id="login-password" type="password" placeholder="••••••••"/>
+        </div>
+        <div class="modal-error" id="login-error"></div>
+        <button class="submit-btn" id="login-btn" onclick="submitLogin()">Sign in →</button>
+        <div class="modal-switch">Don't have an account? <span onclick="switchTab('signup')">Sign up free</span></div>
+      </div>
+
+      <!-- SIGNUP -->
+      <div id="tab-signup" style="display:${tab==='signup'?'block':'none'}">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Full name</label>
+            <input class="form-input" id="signup-name" type="text" placeholder="John Smith"/>
+          </div>
+          <div class="form-group">
+            <label>Company</label>
+            <input class="form-input" id="signup-company" type="text" placeholder="Acme Ltd"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Country</label>
+          <select class="form-select" id="signup-country">
+            <option value="">Select country...</option>
+            ${SERVER_COUNTRIES.map(c=>`<option value="${c}">${c}</option>`).join("")}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input class="form-input" id="signup-email" type="email" placeholder="you@company.com"/>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input class="form-input" id="signup-password" type="password" placeholder="Min 6 characters"/>
+        </div>
+        <div class="modal-error" id="signup-error"></div>
+        <button class="submit-btn" id="signup-btn" onclick="submitSignup()">Create free account →</button>
+        <div class="modal-switch">Already have an account? <span onclick="switchTab('login')">Sign in</span></div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener("click", e => { if (e.target === modal) removeModal(); });
+}
+
+function switchTab(tab) {
+  document.getElementById("tab-login").style.display  = tab === "login"  ? "block" : "none";
+  document.getElementById("tab-signup").style.display = tab === "signup" ? "block" : "none";
+  document.querySelectorAll(".modal-tab").forEach((t, i) =>
+    t.classList.toggle("active", (i === 0 && tab === "login") || (i === 1 && tab === "signup"))
+  );
+}
+
+function removeModal() {
+  const m = document.getElementById("auth-modal");
+  if (m) m.remove();
+  const p = document.getElementById("post-modal");
+  if (p) p.remove();
+  const c = document.getElementById("contact-modal");
+  if (c) c.remove();
+}
+
+async function submitLogin() {
+  const email    = document.getElementById("login-email")?.value.trim();
+  const password = document.getElementById("login-password")?.value.trim();
+  const err      = document.getElementById("login-error");
+  const btn      = document.getElementById("login-btn");
+  err.textContent = "";
+  btn.disabled = true; btn.textContent = "Signing in...";
+
+  const resp = await fetch("/api/login", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await resp.json();
+
+  if (data.ok) {
+    currentUser = { name: data.name, company: data.company };
+    removeModal();
+    updateNavUser();
+    loadMarketplace();
+    showToast(`Welcome back, ${data.name}! 👋`);
+  } else {
+    err.textContent = data.error || "Login failed.";
+    btn.disabled = false; btn.textContent = "Sign in →";
+  }
+}
+
+async function submitSignup() {
+  const name     = document.getElementById("signup-name")?.value.trim();
+  const company  = document.getElementById("signup-company")?.value.trim();
+  const country  = document.getElementById("signup-country")?.value;
+  const email    = document.getElementById("signup-email")?.value.trim();
+  const password = document.getElementById("signup-password")?.value.trim();
+  const err      = document.getElementById("signup-error");
+  const btn      = document.getElementById("signup-btn");
+  err.textContent = "";
+  btn.disabled = true; btn.textContent = "Creating account...";
+
+  const resp = await fetch("/api/signup", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, company, country, email, password }),
+  });
+  const data = await resp.json();
+
+  if (data.ok) {
+    currentUser = { name: data.name, company: data.company, country };
+    removeModal();
+    updateNavUser();
+    loadMarketplace();
+    showToast(`Welcome to TradeWatch, ${data.name}! 🎉`);
+  } else {
+    err.textContent = data.error || "Signup failed.";
+    btn.disabled = false; btn.textContent = "Create free account →";
+  }
+}
+
+async function logoutUser() {
+  await fetch("/api/logout", { method: "POST" });
+  currentUser = null;
+  updateNavUser();
+  loadMarketplace();
+  showToast("Signed out successfully.");
+}
+
+// ─────────────────────────────────────────
+//  Post trade request modal
+// ─────────────────────────────────────────
+function showPostModal() {
+  if (!currentUser) { showAuthModal("signup"); return; }
+  removeModal();
+
+  const SERVER_PRODUCTS   = window.SERVER_PRODUCTS   || [];
+  const SERVER_COUNTRIES  = window.SERVER_COUNTRIES  || [];
+  const SERVER_CURRENCIES = window.SERVER_CURRENCIES || ["USD","EUR","GBP"];
+  const SERVER_TIMELINES  = window.SERVER_TIMELINES  || ["Immediate","1-3 months","6-12 months"];
+
+  const modal = document.createElement("div");
+  modal.className = "modal-overlay";
+  modal.id = "post-modal";
+  modal.innerHTML = `
+    <div class="modal-box" style="position:relative;max-width:520px;max-height:90vh;overflow-y:auto">
+      <button class="modal-close" onclick="removeModal()">✕</button>
+      <h2>Post a buying request</h2>
+      <p>Tell sellers exactly what you need — they will contact you directly.</p>
+
+      <div class="form-group">
+        <label>Product you want to buy</label>
+        <select class="form-select" id="post-product">
+          <option value="">Select product...</option>
+          ${SERVER_PRODUCTS.map(p=>`<option value="${p.key}" data-label="${p.label}">${p.label}</option>`).join("")}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Your country (buying from)</label>
+        <select class="form-select" id="post-country">
+          <option value="">Select country...</option>
+          ${SERVER_COUNTRIES.map(c=>`<option value="${c}" ${currentUser.country===c?"selected":""}>${c}</option>`).join("")}
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Quantity needed</label>
+          <input class="form-input" id="post-quantity" type="text" placeholder="e.g. 10,000 units"/>
+        </div>
+        <div class="form-group">
+          <label>Budget</label>
+          <input class="form-input" id="post-budget" type="text" placeholder="e.g. 500,000"/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Currency</label>
+        <select class="form-select" id="post-currency">
+          ${SERVER_CURRENCIES.map(c=>`<option value="${c}" ${c==="USD"?"selected":""}>${c}</option>`).join("")}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Timeline</label>
+        <select class="form-select" id="post-timeline">
+          <option value="">Select timeline...</option>
+          ${SERVER_TIMELINES.map(t=>`<option value="${t}">${t}</option>`).join("")}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Description — what exactly do you need?</label>
+        <textarea class="form-textarea" id="post-description"
+          placeholder="e.g. We need high-purity silicon wafers (99.9%+) for solar panel manufacturing. Prefer ISO-certified suppliers. Open to long-term contract."></textarea>
+      </div>
+
+      <div class="modal-error"   id="post-error"></div>
+      <div class="modal-success" id="post-success"></div>
+      <button class="submit-btn" id="post-btn" onclick="submitPost()">Post buying request →</button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener("click", e => { if (e.target === modal) removeModal(); });
+}
+
+async function submitPost() {
+  const productEl  = document.getElementById("post-product");
+  const product_key   = productEl?.value;
+  const product_label = productEl?.options[productEl.selectedIndex]?.dataset.label || "";
+  const country_from  = document.getElementById("post-country")?.value;
+  const quantity      = document.getElementById("post-quantity")?.value.trim();
+  const budget        = document.getElementById("post-budget")?.value.trim();
+  const currency      = document.getElementById("post-currency")?.value;
+  const timeline      = document.getElementById("post-timeline")?.value;
+  const description   = document.getElementById("post-description")?.value.trim();
+
+  const err  = document.getElementById("post-error");
+  const succ = document.getElementById("post-success");
+  const btn  = document.getElementById("post-btn");
+  err.textContent = ""; succ.textContent = "";
+
+  if (!product_key || !country_from || !quantity || !budget || !timeline || !description) {
+    err.textContent = "Please fill in all fields."; return;
+  }
+
+  btn.disabled = true; btn.textContent = "Posting...";
+
+  const resp = await fetch("/api/marketplace", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ product_key, product_label, quantity, budget,
+                           currency, description, country_from, timeline }),
+  });
+  const data = await resp.json();
+
+  if (data.ok) {
+    succ.textContent = "✅ " + data.message;
+    setTimeout(() => { removeModal(); loadMarketplace(); }, 1500);
+  } else {
+    err.textContent = data.error || "Failed to post.";
+    btn.disabled = false; btn.textContent = "Post buying request →";
+  }
+}
+
+// ─────────────────────────────────────────
+//  Contact modal — seller contacts buyer
+// ─────────────────────────────────────────
+function showContactModal(requestId, buyerName, productLabel) {
+  removeModal();
+  const modal = document.createElement("div");
+  modal.className = "modal-overlay";
+  modal.id = "contact-modal";
+  modal.innerHTML = `
+    <div class="modal-box" style="position:relative">
+      <button class="modal-close" onclick="removeModal()">✕</button>
+      <h2>Contact buyer</h2>
+      <p>Send a message to <strong>${buyerName}</strong> about their <strong>${productLabel}</strong> request.</p>
+
+      <div class="form-group">
+        <label>Your name</label>
+        <input class="form-input" id="c-name" type="text" placeholder="Your full name"
+          value="${currentUser?.name || ""}"/>
+      </div>
+      <div class="form-group">
+        <label>Your company</label>
+        <input class="form-input" id="c-company" type="text" placeholder="Your company name"
+          value="${currentUser?.company || ""}"/>
+      </div>
+      <div class="form-group">
+        <label>Your email</label>
+        <input class="form-input" id="c-email" type="email" placeholder="you@company.com"/>
+      </div>
+      <div class="form-group">
+        <label>Your message</label>
+        <textarea class="form-textarea" id="c-message"
+          placeholder="e.g. We are a certified supplier of ${productLabel} based in Germany. We can fulfill your order within your timeline. Our pricing is competitive and we offer flexible payment terms. Please let us know if you'd like a formal quote."></textarea>
+      </div>
+
+      <div class="modal-error"   id="c-error"></div>
+      <div class="modal-success" id="c-success"></div>
+      <button class="submit-btn" id="c-btn" onclick="submitContact(${requestId})">
+        Send message to buyer →
+      </button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener("click", e => { if (e.target === modal) removeModal(); });
+}
+
+async function submitContact(requestId) {
+  const sender_name    = document.getElementById("c-name")?.value.trim();
+  const sender_company = document.getElementById("c-company")?.value.trim();
+  const sender_email   = document.getElementById("c-email")?.value.trim();
+  const message        = document.getElementById("c-message")?.value.trim();
+  const err            = document.getElementById("c-error");
+  const succ           = document.getElementById("c-success");
+  const btn            = document.getElementById("c-btn");
+  err.textContent = ""; succ.textContent = "";
+
+  if (!sender_name || !sender_company || !sender_email || !message) {
+    err.textContent = "Please fill in all fields."; return;
+  }
+
+  btn.disabled = true; btn.textContent = "Sending...";
+
+  const resp = await fetch("/api/contact", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ request_id: requestId, sender_name,
+                           sender_email, sender_company, message }),
+  });
+  const data = await resp.json();
+
+  if (data.ok) {
+    succ.textContent = "✅ " + data.message;
+    setTimeout(() => removeModal(), 2500);
+  } else {
+    err.textContent = data.error || "Failed to send.";
+    btn.disabled = false; btn.textContent = "Send message →";
+  }
+}
+
+// ─────────────────────────────────────────
+//  Load & render marketplace
+// ─────────────────────────────────────────
+let marketFilter = { product: "", country: "" };
+
+async function loadMarketplace() {
+  const grid = document.getElementById("market-grid");
+  const statsEl = document.getElementById("market-stats");
+  if (!grid) return;
+
+  grid.innerHTML = `<div class="market-loading">Loading requests...</div>`;
+
+  const params = new URLSearchParams();
+  if (marketFilter.product) params.append("product", marketFilter.product);
+  if (marketFilter.country) params.append("country", marketFilter.country);
+
+  const resp  = await fetch("/api/marketplace?" + params.toString());
+  const items = await resp.json();
+
+  // Update stats
+  if (statsEl) {
+    const products = [...new Set(items.map(i => i.product_label))];
+    const countries = [...new Set(items.map(i => i.country_from))];
+    statsEl.innerHTML = `
+      <div class="mstat"><div class="mstat-val">${items.length}</div><div class="mstat-label">Open requests</div></div>
+      <div class="mstat"><div class="mstat-val">${countries.length}</div><div class="mstat-label">Countries</div></div>
+      <div class="mstat"><div class="mstat-val">${products.length}</div><div class="mstat-label">Products</div></div>`;
+  }
+
+  if (!items.length) {
+    grid.innerHTML = `<div class="market-empty">
+      No requests yet${marketFilter.product || marketFilter.country ? " for this filter" : ""}.<br>
+      <span style="color:var(--green);cursor:pointer" onclick="showPostModal()">Be the first to post →</span>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = items.map(item => {
+    const isOwner = currentUser && item.buyer_name === currentUser.name;
+    const date    = item.created_at ? item.created_at.slice(0, 10) : "";
+    return `
+    <div class="market-card" id="mcard-${item.id}">
+      <div class="mc-top">
+        <div class="mc-buyer">
+          <div class="mc-name">👤 ${item.buyer_name}</div>
+          <div class="mc-company">${item.buyer_company}</div>
+          <div class="mc-country">📍 ${item.buyer_country}</div>
+        </div>
+        <div class="mc-product-badge">${item.product_label}</div>
+      </div>
+
+      <div class="mc-desc">${item.description}</div>
+
+      <div class="mc-details">
+        <div class="mc-detail">
+          <div class="mc-detail-label">Quantity</div>
+          <div class="mc-detail-val">${item.quantity}</div>
+        </div>
+        <div class="mc-detail">
+          <div class="mc-detail-label">Budget</div>
+          <div class="mc-detail-val">${item.budget} ${item.currency}</div>
+        </div>
+        <div class="mc-detail">
+          <div class="mc-detail-label">Timeline</div>
+          <div class="mc-detail-val">${item.timeline}</div>
+        </div>
+        <div class="mc-detail">
+          <div class="mc-detail-label">Buying from</div>
+          <div class="mc-detail-val">${item.country_from}</div>
+        </div>
+      </div>
+
+      <div class="mc-footer">
+        <span class="mc-date">Posted ${date}</span>
+        <div class="mc-actions">
+          ${isOwner
+            ? `<button class="delete-btn" onclick="deleteRequest(${item.id})">Delete</button>
+               <button class="contact-btn" style="background:var(--blue)" onclick="toggleMessages(${item.id})">Messages</button>`
+            : `<button class="contact-btn" onclick="showContactModal(${item.id},'${item.buyer_name}','${item.product_label}')">
+                 Contact buyer →
+               </button>`
+          }
+        </div>
+      </div>
+
+      <!-- Messages panel (owner only) -->
+      ${isOwner ? `<div class="messages-panel" id="msgs-${item.id}">
+        <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:8px">MESSAGES FROM SELLERS</div>
+        <div id="msgs-body-${item.id}">Loading...</div>
+      </div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+async function deleteRequest(id) {
+  if (!confirm("Delete this request?")) return;
+  const resp = await fetch(`/api/marketplace/${id}`, { method: "DELETE" });
+  const data = await resp.json();
+  if (data.ok) { showToast("Request deleted."); loadMarketplace(); }
+  else showToast(data.error || "Could not delete.", true);
+}
+
+async function toggleMessages(id) {
+  const panel = document.getElementById(`msgs-${id}`);
+  const body  = document.getElementById(`msgs-body-${id}`);
+  if (!panel) return;
+
+  if (panel.classList.contains("open")) {
+    panel.classList.remove("open"); return;
+  }
+  panel.classList.add("open");
+
+  const resp = await fetch(`/api/my-messages/${id}`);
+  const msgs = await resp.json();
+
+  if (!msgs.length) {
+    body.innerHTML = `<div style="font-size:12px;color:var(--text3);font-family:var(--mono)">No messages yet.</div>`;
+  } else {
+    body.innerHTML = msgs.map(m => `
+      <div class="msg-item">
+        <div class="msg-sender">${m.sender_name} — ${m.sender_company}</div>
+        <div class="msg-meta">${m.sender_email} · ${m.created_at?.slice(0,10)}</div>
+        <div class="msg-body">${m.message}</div>
+      </div>`).join("");
+  }
+}
+
+// ─────────────────────────────────────────
+//  Filters
+// ─────────────────────────────────────────
+function applyMarketFilter() {
+  marketFilter.product = document.getElementById("filter-product")?.value || "";
+  marketFilter.country = document.getElementById("filter-country")?.value || "";
+  loadMarketplace();
+}
+
+// ─────────────────────────────────────────
+//  Toast notification
+// ─────────────────────────────────────────
+function showToast(msg, isError = false) {
+  const existing = document.getElementById("toast");
+  if (existing) existing.remove();
+  const t = document.createElement("div");
+  t.id = "toast";
+  t.style.cssText = `
+    position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;
+    background:${isError ? "var(--red-bg)" : "var(--green-bg)"};
+    color:${isError ? "var(--red)" : "var(--green)"};
+    border:1px solid ${isError ? "rgba(224,82,82,.3)" : "rgba(61,217,164,.3)"};
+    padding:10px 18px;border-radius:var(--radius-lg);font-size:13px;
+    font-family:var(--mono);animation:fadeUp .3s both;
+    box-shadow:0 4px 20px rgba(0,0,0,.3)`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ─────────────────────────────────────────
+//  Init on page load
+// ─────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  checkLoginStatus();
+});
