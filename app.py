@@ -144,14 +144,14 @@ def call_ai(api_key: str, prompt: str,
     elif provider == "gemini":
         import google.generativeai as genai
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.0-flash")
         return model.generate_content(prompt).text
 
     elif provider == "groq":
         from groq import Groq
         client = Groq(api_key=api_key)
         resp = client.chat.completions.create(
-            model="llama3-70b-8192",
+            model="llama-3.1-8b-instant",
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -244,8 +244,8 @@ COUNTRIES = [
 PROVIDERS = {
     "claude":  {"name": "Claude",       "company": "Anthropic", "model": "claude-sonnet-4-20250514", "free": False, "url": "https://platform.claude.com"},
     "openai":  {"name": "GPT-4o mini",  "company": "OpenAI",    "model": "gpt-4o-mini",              "free": False, "url": "https://platform.openai.com"},
-    "gemini":  {"name": "Gemini Flash", "company": "Google",    "model": "gemini-1.5-flash",         "free": True,  "url": "https://aistudio.google.com"},
-    "groq":    {"name": "Llama 3",      "company": "Groq",      "model": "llama3-70b-8192",          "free": True,  "url": "https://console.groq.com"},
+    "gemini": {"name": "Gemini Flash", "company": "Google", "model": "gemini-2.0-flash", "free": True, "url": "https://aistudio.google.com"},
+    "groq":    {"name": "Llama 3",      "company": "Groq",      "model": "llama-3.1-8b-instant",          "free": True,  "url": "https://console.groq.com"},
 }
 
 CURRENCIES = ["USD","EUR","GBP","JPY","CNY","INR","AUD","CAD"]
