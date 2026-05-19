@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard — TradeWatch</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0a1628;--bg2:#111f35;--bg3:#1a2d42;--bg4:#243347;
+      --text:#f0f4f8;--text2:#8fa8c0;--text3:#4d6a84;
+      --green:#3dd9a4;--red:#e05252;--amber:#f0a500;--blue:#4a9eff;
+      --border:rgba(255,255,255,.06);
+    }
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+    
+    /* NAV */
+    .nav{display:flex;align-items:center;justify-content:space-between;padding:0 2rem;height:56px;background:rgba(10,22,40,.95);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+    .nav-logo{font-family:'Syne',sans-serif;font-size:16px;font-weight:800}
+    .nav-logo span{color:var(--green)}
+    .nav-badge{font-size:10px;padding:3px 10px;border-radius:20px;background:rgba(224,82,82,.12);color:var(--red);border:1px solid rgba(224,82,82,.25);font-family:'IBM Plex Mono',monospace}
+    .nav-right{display:flex;gap:10px;align-items:center}
+    .logout-btn{padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:'IBM Plex Mono',monospace}
+    .logout-btn:hover{border-color:var(--red);color:var(--red)}
+
+    /* LAYOUT */
+    .container{max-width:1100px;margin:0 auto;padding:2rem}
+    .page-title{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;margin-bottom:4px}
+    .page-sub{font-size:12px;color:var(--text3);font-family:'IBM Plex Mono',monospace;margin-bottom:2rem}
+
+    /* STAT CARDS */
+    .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem}
+    .stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1.25rem}
+    .stat-label{font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
+    .stat-val{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:var(--text)}
+    .stat-today{font-size:11px;color:var(--green);font-family:'IBM Plex Mono',monospace;margin-top:4px}
+    .stat-card.green .stat-val{color:var(--green)}
+    .stat-card.blue  .stat-val{color:var(--blue)}
+    .stat-card.amber .stat-val{color:var(--amber)}
+    .stat-card.red   .stat-val{color:var(--red)}
+
+    /* TWO COL */
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem}
+
+    /* PANELS */
+    .panel{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1.5rem}
+    .panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+    .panel-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700}
+    .panel-count{font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
+
+    /* TABLE */
+    table{width:100%;border-collapse:collapse;font-size:12px;font-family:'IBM Plex Mono',monospace}
+    th{padding:8px 16px;text-align:left;color:var(--text3);border-bottom:1px solid var(--border);font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+    td{padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--text2)}
+    tr:hover td{background:rgba(255,255,255,.02)}
+    tr:last-child td{border-bottom:none}
+    td:first-child{color:var(--text);font-weight:500}
+
+    /* BARS */
+    .bar-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.03)}
+    .bar-row:last-child{border-bottom:none}
+    .bar-label{font-size:12px;color:var(--text2);font-family:'IBM Plex Mono',monospace;min-width:140px}
+    .bar-track{flex:1;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden}
+    .bar-fill{height:100%;border-radius:3px;background:var(--green)}
+    .bar-val{font-size:12px;font-weight:700;color:var(--green);font-family:'Syne',sans-serif;min-width:24px;text-align:right}
+
+    /* BADGES */
+    .badge{font-size:10px;padding:2px 8px;border-radius:20px;font-family:'IBM Plex Mono',monospace}
+    .badge-green{background:rgba(61,217,164,.12);color:var(--green);border:1px solid rgba(61,217,164,.25)}
+    .badge-blue{background:rgba(74,158,255,.12);color:var(--blue);border:1px solid rgba(74,158,255,.25)}
+
+    /* MSG CARD */
+    .msg-card{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.03)}
+    .msg-card:last-child{border-bottom:none}
+    .msg-sender{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
+    .msg-meta{font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace;margin-bottom:6px}
+    .msg-body{font-size:12px;color:var(--text2);line-height:1.5;background:var(--bg3);padding:8px 10px;border-radius:8px}
+
+    /* RESPONSIVE */
+    @media(max-width:768px){
+      .stats-grid{grid-template-columns:1fr 1fr}
+      .two-col{grid-template-columns:1fr}
+      .container{padding:1rem}
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="nav-logo">Trade<span>Watch</span></div>
+    <span class="nav-badge">🔐 Admin</span>
+  </div>
+  <div class="nav-right">
+    <span style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace">Only you can see this page</span>
+    <a href="/admin/logout"><button class="logout-btn">Sign out</button></a>
+  </div>
+</nav>
+
+<div class="container">
+
+  <div class="page-title">Admin Dashboard</div>
+  <div class="page-sub">Live overview of your TradeWatch app · Auto refreshes every 60 seconds</div>
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="stat-card green">
+      <div class="stat-label">Total users</div>
+      <div class="stat-val">{{ total_users }}</div>
+      <div class="stat-today">+{{ new_users_today }} today</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-label">Trade requests</div>
+      <div class="stat-val">{{ total_requests }}</div>
+      <div class="stat-today">+{{ new_requests_today }} today</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-label">Messages sent</div>
+      <div class="stat-val">{{ total_messages }}</div>
+      <div class="stat-today">+{{ new_messages_today }} today</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Open requests</div>
+      <div class="stat-val">{{ open_requests }}</div>
+      <div class="stat-today">Active listings</div>
+    </div>
+  </div>
+
+  <!-- TOP COUNTRIES + PRODUCTS -->
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Top buying countries</div>
+        <div class="panel-count">by requests</div>
+      </div>
+      {% set max_c = top_countries[0].count if top_countries else 1 %}
+      {% for c in top_countries %}
+      <div class="bar-row">
+        <div class="bar-label">{{ c.country_from }}</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:{{ (c.count / max_c * 100)|int }}%"></div>
+        </div>
+        <div class="bar-val">{{ c.count }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Top products wanted</div>
+        <div class="panel-count">by requests</div>
+      </div>
+      {% set max_p = top_products[0].count if top_products else 1 %}
+      {% for p in top_products %}
+      <div class="bar-row">
+        <div class="bar-label">{{ p.product_label }}</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:{{ (p.count / max_p * 100)|int }}%;background:var(--blue)"></div>
+        </div>
+        <div class="bar-val" style="color:var(--blue)">{{ p.count }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- RECENT USERS -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">Recent signups</div>
+      <div class="panel-count">last 10 users</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Company</th>
+          <th>Country</th>
+          <th>Email</th>
+          <th>Joined</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in recent_users %}
+        <tr>
+          <td>{{ u.name }}</td>
+          <td>{{ u.company }}</td>
+          <td><span class="badge badge-blue">{{ u.country }}</span></td>
+          <td style="color:var(--text3)">{{ u.email }}</td>
+          <td style="color:var(--text3)">{{ u.created_at[:10] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- RECENT REQUESTS -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">Recent trade requests</div>
+      <div class="panel-count">last 10 requests</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Buyer</th>
+          <th>Product</th>
+          <th>Quantity</th>
+          <th>Budget</th>
+          <th>Country</th>
+          <th>Timeline</th>
+          <th>Posted</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in recent_requests %}
+        <tr>
+          <td>{{ r.buyer_name }}</td>
+          <td><span class="badge badge-green">{{ r.product_label }}</span></td>
+          <td>{{ r.quantity }}</td>
+          <td>{{ r.budget }} {{ r.currency }}</td>
+          <td>{{ r.country_from }}</td>
+          <td style="color:var(--amber)">{{ r.timeline }}</td>
+          <td style="color:var(--text3)">{{ r.created_at[:10] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- RECENT MESSAGES -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">Recent seller messages</div>
+      <div class="panel-count">last 10 messages</div>
+    </div>
+    {% for m in recent_messages %}
+    <div class="msg-card">
+      <div class="msg-sender">{{ m.sender_name }} — {{ m.sender_company }}</div>
+      <div class="msg-meta">
+        ✉️ {{ m.sender_email }} &middot;
+        Product: {{ m.product_label }} &middot;
+        Buyer: {{ m.buyer_name }} &middot;
+        {{ m.created_at[:10] }}
+      </div>
+      <div class="msg-body">{{ m.message }}</div>
+    </div>
+    {% endfor %}
+    {% if not recent_messages %}
+    <div style="padding:2rem;text-align:center;color:var(--text3);font-family:'IBM Plex Mono',monospace;font-size:12px">
+      No messages yet
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+  // Auto refresh every 60 seconds
+  setTimeout(() => location.reload(), 60000);
+</script>
+
+</body>
+</html>

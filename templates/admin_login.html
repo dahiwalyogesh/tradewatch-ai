@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Login — TradeWatch</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'IBM Plex Mono',monospace;background:#0a1628;color:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center}
+    .card{background:#111f35;border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:2.5rem;width:100%;max-width:400px}
+    .logo{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:8px}
+    .logo span{color:#3dd9a4}
+    .sub{font-size:12px;color:#4d6a84;margin-bottom:2rem}
+    label{font-size:11px;color:#4d6a84;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px}
+    input{width:100%;padding:12px 14px;border:1px solid rgba(255,255,255,.06);border-radius:10px;background:#1a2d42;color:#f0f4f8;font-size:14px;font-family:'IBM Plex Mono',monospace;outline:none;margin-bottom:1rem}
+    input:focus{border-color:#3dd9a4}
+    button{width:100%;padding:12px;background:#3dd9a4;color:#0a1628;border:none;border-radius:10px;font-size:14px;font-weight:700;font-family:'Syne',sans-serif;cursor:pointer}
+    button:hover{opacity:.88}
+    .error{color:#e05252;font-size:12px;margin-bottom:1rem;padding:8px 12px;background:rgba(224,82,82,.1);border-radius:8px;border:1px solid rgba(224,82,82,.2)}
+    .lock{font-size:48px;text-align:center;margin-bottom:1.5rem}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="lock">🔐</div>
+    <div class="logo">Trade<span>Watch</span></div>
+    <div class="sub">Admin access only</div>
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+    <form method="POST" action="/admin/login">
+      <label>Admin password</label>
+      <input type="password" name="password" placeholder="Enter admin password" autofocus/>
+      <button type="submit">Enter dashboard →</button>
+    </form>
+  </div>
+</body>
+</html>
