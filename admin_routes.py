@@ -9,7 +9,7 @@
 #  STEP 1 — Add this near the top of app.py with other constants
 # ------------------------------------------------------------------
 
-ADMIN_PASSWORD = "tradewatch-admin-2026"  # Change this to your own password!
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 
 # ------------------------------------------------------------------
 #  STEP 2 — Add these routes to app.py (before the if __name__ block)
@@ -104,7 +104,7 @@ def admin_dashboard():
 def admin_login():
     """Admin login."""
     password = request.form.get("password", "")
-    if password == ADMIN_PASSWORD:
+    if ADMIN_PASSWORD and password == ADMIN_PASSWORD:
         session["admin_logged_in"] = True
         return redirect("/admin")
     return render_template("admin_login.html", error="Wrong password!")

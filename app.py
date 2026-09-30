@@ -116,8 +116,46 @@ def fetch_world_bank(country_code, indicator):
 
 
 # ------------------------------------------------------------------
+#  Server-side API keys (set as environment variables on Render)
+#  Visitors can leave the key box blank to use these. The keys stay
+#  on the server and are never sent to the browser.
+# ------------------------------------------------------------------
+ENV_KEY_NAMES = {
+    "claude": ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"],
+    "openai": ["OPENAI_API_KEY"],
+    "gemini": ["GEMINI_API_KEY", "GOOGLE_API_KEY"],
+    "groq":   ["GROQ_API_KEY"],
+}
+
+
+def server_key(provider: str) -> str:
+    for name in ENV_KEY_NAMES.get(provider, []):
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    return ""
+
+
+def current_key() -> str:
+    """Key for this visitor: their own if they pasted one, else the server's."""
+    if session.get("use_server_key"):
+        return server_key(session.get("provider", "claude"))
+    return session.get("api_key", "")
+
+
+# ------------------------------------------------------------------
 #  AI Provider — unified call function
 # ------------------------------------------------------------------
+# Model names can be changed on Render (Environment tab) without editing code,
+# e.g. set CLAUDE_MODEL if a model is retired again.
+MODELS = {
+    "claude": os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5-20251001"),
+    "openai": os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
+    "gemini": os.environ.get("GEMINI_MODEL", "gemini-3.6-flash"),
+    "groq":   os.environ.get("GROQ_MODEL",   "llama-3.3-70b-versatile"),
+}
+
+
 def call_ai(api_key: str, prompt: str,
             provider: str = "claude", max_tokens: int = 2500) -> str:
 
@@ -125,7 +163,7 @@ def call_ai(api_key: str, prompt: str,
         from anthropic import Anthropic
         client = Anthropic(api_key=api_key)
         msg = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=MODELS["claude"],
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -135,7 +173,7 @@ def call_ai(api_key: str, prompt: str,
         from openai import OpenAI
         client = OpenAI(api_key=api_key)
         resp = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=MODELS["openai"],
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -144,14 +182,14 @@ def call_ai(api_key: str, prompt: str,
     elif provider == "gemini":
         import google.generativeai as genai
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        model = genai.GenerativeModel(MODELS["gemini"])
         return model.generate_content(prompt).text
 
     elif provider == "groq":
         from groq import Groq
         client = Groq(api_key=api_key)
         resp = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model=MODELS["groq"],
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -242,10 +280,10 @@ COUNTRIES = [
 ]
 
 PROVIDERS = {
-    "claude":  {"name": "Claude",       "company": "Anthropic", "model": "claude-sonnet-4-20250514", "free": False, "url": "https://platform.claude.com"},
-    "openai":  {"name": "GPT-4o mini",  "company": "OpenAI",    "model": "gpt-4o-mini",              "free": False, "url": "https://platform.openai.com"},
-    "gemini": {"name": "Gemini Flash", "company": "Google", "model": "gemini-2.0-flash", "free": True, "url": "https://aistudio.google.com"},
-    "groq":    {"name": "Llama 3",      "company": "Groq",      "model": "llama-3.1-8b-instant",          "free": True,  "url": "https://console.groq.com"},
+    "claude":  {"name": "Claude Haiku", "company": "Anthropic", "model": MODELS["claude"], "free": False, "url": "https://platform.claude.com"},
+    "openai":  {"name": "GPT-4o mini",  "company": "OpenAI",    "model": MODELS["openai"],              "free": False, "url": "https://platform.openai.com"},
+    "gemini": {"name": "Gemini Flash", "company": "Google", "model": MODELS["gemini"], "free": True, "url": "https://aistudio.google.com"},
+    "groq":    {"name": "Llama 3",      "company": "Groq",      "model": MODELS["groq"],          "free": True,  "url": "https://console.groq.com"},
 }
 
 CURRENCIES = ["USD","EUR","GBP","JPY","CNY","INR","AUD","CAD"]
@@ -489,12 +527,20 @@ def validate_key():
     data     = request.get_json() or {}
     key      = data.get("api_key", "").strip()
     provider = data.get("provider", "claude").strip()
+    use_server = False
+    if not key:
+        key = server_key(provider)
+        use_server = True
     if not key:
         return jsonify({"ok": False, "error": "Please enter an API key."})
     try:
         call_ai(key, "Say OK", provider=provider, max_tokens=10)
-        session["api_key"]  = key
         session["provider"] = provider
+        session["use_server_key"] = use_server
+        if use_server:
+            session.pop("api_key", None)
+        else:
+            session["api_key"] = key
         return jsonify({"ok": True, "provider": provider})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
@@ -522,7 +568,7 @@ def real_data(country_code):
 
 @app.route("/api/generate-news", methods=["POST"])
 def generate_news():
-    api_key  = session.get("api_key", "")
+    api_key  = current_key()
     provider = session.get("provider", "claude")
     if not api_key:
         return jsonify({"error": "No API key. Please validate your key first."}), 401
@@ -550,7 +596,7 @@ Return ONLY valid JSON:
 
 @app.route("/api/ask", methods=["POST"])
 def ask():
-    api_key  = session.get("api_key", "")
+    api_key  = current_key()
     provider = session.get("provider", "claude")
     if not api_key:
         return jsonify({"error": "No API key."}), 401
@@ -574,7 +620,7 @@ Alerts:\n{headlines}\nQuestion: {question}\nAnswer in 2-4 sentences."""
 
 @app.route("/api/email-digest", methods=["POST"])
 def email_digest():
-    api_key  = session.get("api_key", "")
+    api_key  = current_key()
     provider = session.get("provider", "claude")
     if not api_key:
         return jsonify({"error": "No API key."}), 401
@@ -593,7 +639,8 @@ def email_digest():
 
 @app.route("/api/providers")
 def get_providers():
-    return jsonify(PROVIDERS)
+    return jsonify({k: {**v, "server_key": bool(server_key(k))}
+                    for k, v in PROVIDERS.items()})
 
 # ================================================================
 #  TradeWatch — Admin Dashboard Routes
@@ -606,7 +653,9 @@ def get_providers():
 #  STEP 1 — Add this near the top of app.py with other constants
 # ------------------------------------------------------------------
 
-ADMIN_PASSWORD = "tradewatch-admin-2026"  # Change this to your own password!
+# Set ADMIN_PASSWORD as an environment variable. If it is not set,
+# the admin login is disabled so nobody can use a default password.
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 
 # ------------------------------------------------------------------
 #  STEP 2 — Add these routes to app.py (before the if __name__ block)
@@ -701,7 +750,7 @@ def admin_dashboard():
 def admin_login():
     """Admin login."""
     password = request.form.get("password", "")
-    if password == ADMIN_PASSWORD:
+    if ADMIN_PASSWORD and password == ADMIN_PASSWORD:
         session["admin_logged_in"] = True
         return redirect("/admin")
     return render_template("admin_login.html", error="Wrong password!")

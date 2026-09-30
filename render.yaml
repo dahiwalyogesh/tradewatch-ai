@@ -1,0 +1,30 @@
+# Render Blueprint for TradeWatch AI
+# Render reads this file when you choose New → Blueprint and pick this repo.
+services:
+  - type: web
+    name: tradewatch-ai
+    runtime: python
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    # --timeout 120: AI calls can take longer than gunicorn's 30s default
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: SECRET_KEY
+        generateValue: true      # Render creates a random value for you
+      # Secrets below are left blank here on purpose.
+      # Render asks you to type them in during setup; they never live in GitHub.
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
