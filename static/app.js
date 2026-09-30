@@ -64,7 +64,7 @@ function demandColor(val) {
     const s = document.getElementById("splash-screen");
     s.style.transition = "opacity 0.6s ease";
     s.style.opacity = "0";
-    setTimeout(() => { s.style.display = "none"; showApiScreen(); }, 600);
+    setTimeout(() => { s.style.display = "none"; startApp(); }, 600);
   }, 3000);
 })();
 
@@ -87,6 +87,31 @@ function selectProvider(key) {
 }
 
 // ─────────────────────────────────────────
+//  Demo mode: if the server has an API key saved (Render environment
+//  variable), skip the key screen and open the app straight away.
+// ─────────────────────────────────────────
+const DEMO_ORDER = ["gemini", "claude", "groq", "openai"];
+
+async function startApp() {
+  const demo = DEMO_ORDER.find(k => PROVIDERS[k] && PROVIDERS[k].server_key);
+  if (!demo) { showApiScreen(); return; }
+  try {
+    const resp = await fetch("/api/validate-key", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ api_key: "", provider: demo }),
+    });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error);
+    state.provider = demo;
+    await loadWorldData();
+    initHomePage();
+  } catch (e) {
+    showApiScreen();   // demo key failed — let the visitor use their own
+  }
+}
+
+// ─────────────────────────────────────────
 //  API Key Screen
 // ─────────────────────────────────────────
 function showApiScreen() {
@@ -99,8 +124,6 @@ async function submitApiKey() {
   const err = document.getElementById("api-error");
   const btn = document.getElementById("api-submit-btn");
   err.textContent = "";
-
-  if (!key) { err.textContent = "Please paste your API key."; return; }
 
   btn.textContent = "Validating...";
   btn.disabled = true;
@@ -121,7 +144,7 @@ async function submitApiKey() {
       err.textContent = data.error || "Invalid key — please try again.";
     }
   } catch {
-    err.textContent = "Cannot reach server. Is Flask running on port 5000?";
+    err.textContent = "Cannot reach the server. If the site was asleep, wait 30 seconds and try again.";
   }
 
   btn.textContent = "Launch →";
