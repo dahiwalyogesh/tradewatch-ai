@@ -4,16 +4,14 @@
 > See product demand across **50+ countries**, get personalised AI trade alerts,
 > and connect buyers with sellers in a **live trade marketplace**.
 
-
 ---
 
 ## 🚀 Live Demo
 
 **👉 [tradewatch-ai.onrender.com](https://tradewatch-ai.onrender.com)**
 
-> Use your own free API key from Groq (free) or Google Gemini (free) to try all features.
-
----
+> No API key or sign-up needed — the demo opens straight into the app.
+> Hosted on a free plan, so the first visit may take up to a minute while the server wakes up.
 
 ---
 
@@ -31,25 +29,29 @@
 
 ### 🤖 AI Trade Monitor
 - Enter your industry, home country and trading partners
-- AI generates 8 personalised trade alerts
+- AI generates 8 personalised trade alerts plus recommendations
 - Risk score gauge + sentiment chart
 - Ask AI anything about your trade situation
-- Generate weekly email digest
-- Export PDF report
+- Generate a weekly email digest
+- Export a PDF report
 
 ### 🛒 Live Marketplace
-- Real buyers post what they want to purchase
+- Buyers post what they want to purchase
 - Filter by product or country
 - Sellers contact buyers directly
 - Full user accounts — sign up free
 
 ### 🔌 Multi-AI Support
-| Provider | Model | Free? |
-|----------|-------|-------|
-| Anthropic | Claude Sonnet | $5 free credits |
-| OpenAI | GPT-4o mini | $5 free credits |
-| Google | Gemini 1.5 Flash | ✅ Free |
-| Groq | Llama 3 70B | ✅ Free |
+One unified backend works with four AI providers. Model names can be changed through environment variables without editing code.
+
+| Provider | Default model | Env variable (key) | Env variable (model) |
+|----------|---------------|--------------------|----------------------|
+| Anthropic | Claude Haiku 4.5 | `ANTHROPIC_API_KEY` | `CLAUDE_MODEL` |
+| OpenAI | GPT-4o mini | `OPENAI_API_KEY` | `OPENAI_MODEL` |
+| Google | Gemini 3.6 Flash | `GEMINI_API_KEY` | `GEMINI_MODEL` |
+| Groq | Llama 3.3 70B | `GROQ_API_KEY` | `GROQ_MODEL` |
+
+**Demo mode:** if a provider key is set on the server, visitors skip the key screen and go straight into the app. The key stays on the server and is never sent to the browser. Visitors can still use their own key via **Change AI**.
 
 ---
 
@@ -57,17 +59,18 @@
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Python · Flask |
-| Database | SQLite (built into Python) |
+| Backend | Python · Flask · Gunicorn |
+| Database | SQLite |
 | AI | Anthropic · OpenAI · Google · Groq SDKs |
 | Map | D3.js · TopoJSON |
 | Charts | Chart.js |
 | PDF | jsPDF |
-| Deployment | Railway |
+| Data | World Bank Open Data API |
+| Deployment | Render |
 
 ---
 
-## ⚡ Quick Start
+## ⚡ Quick Start (run locally)
 
 ### 1. Clone the repo
 ```bash
@@ -80,25 +83,24 @@ cd tradewatch-ai
 pip install -r requirements.txt
 ```
 
-### 3. Run the server
+### 3. Add your settings
+Copy `.env.example` to `.env` and fill in your values (at minimum `SECRET_KEY`, plus any AI key you want to use).
+
+### 4. Run the server
 ```bash
 python app.py
 ```
 
-### 4. Open in browser
+### 5. Open in browser
 ```
 http://localhost:5000
 ```
 
-### 5. Get a free API key
-**Groq — completely free, no credit card:**
-1. Go to [console.groq.com](https://console.groq.com)
-2. Sign up → API Keys → Create key
-3. Paste in the app and click Launch →
-
-**Google Gemini — also free:**
-1. Go to [aistudio.google.com](https://aistudio.google.com)
-2. Sign in with Google → Get API key
+**Getting an AI key:**
+- **Google Gemini** — [aistudio.google.com](https://aistudio.google.com) → Get API key (free tier available)
+- **Groq** — [console.groq.com](https://console.groq.com) → API Keys
+- **Anthropic** — [platform.claude.com](https://platform.claude.com) (pay-as-you-go)
+- **OpenAI** — [platform.openai.com](https://platform.openai.com) (pay-as-you-go)
 
 ---
 
@@ -107,14 +109,19 @@ http://localhost:5000
 ```
 tradewatch-ai/
 ├── app.py                  # Flask server — all API endpoints and AI calls
+├── admin_routes.py         # Reference copy of the admin dashboard routes
 ├── seed_data.py            # Run once to add demo marketplace data
 ├── requirements.txt        # Python dependencies
-├── Procfile                # Railway deployment config
+├── Procfile                # Start command (gunicorn)
+├── render.yaml             # Render deployment blueprint
+├── .python-version         # Python 3.11
 ├── .env.example            # Environment variable template
 ├── .gitignore              # Keeps secrets off GitHub
 ├── README.md
 ├── templates/
-│   └── index.html          # Single-page Jinja2 template
+│   ├── index.html          # Single-page Jinja2 template
+│   ├── admin.html          # Admin dashboard
+│   └── admin_login.html    # Admin login
 └── static/
     ├── style.css            # Dark navy theme
     ├── app.js               # Frontend JS — world map, rankings, monitor
@@ -127,7 +134,8 @@ tradewatch-ai/
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/validate-key` | Validate AI key (any provider) |
+| GET | `/api/providers` | AI providers, models and demo-key status |
+| POST | `/api/validate-key` | Validate an AI key (or use the server key) |
 | GET | `/api/world-data` | All 50+ country demand data |
 | POST | `/api/generate-news` | AI news + recommendations |
 | POST | `/api/ask` | Answer a trade question |
@@ -141,7 +149,7 @@ tradewatch-ai/
 
 ---
 
-##  Add Demo Data
+## 🧪 Demo Data
 
 Run this once to populate the marketplace with demo buyers:
 
@@ -157,21 +165,34 @@ Password: demo1234
 
 ---
 
-## 🚀 Deploy to Railway
+## 🚀 Deploy to Render (free)
 
-1. Push to GitHub
-2. Go to [railway.app](https://railway.app)
-3. New Project → Deploy from GitHub repo
-4. Select your repo
-5. Add environment variable: `SECRET_KEY=your-secret`
-6. Generate domain → your app is live!
+1. Push the repo to GitHub
+2. Sign in at [render.com](https://render.com) with GitHub
+3. **New → Web Service** → select this repo
+4. Settings:
+   - **Build command:** `pip install -r requirements.txt`
+   - **Start command:** `gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120`
+   - **Instance type:** Free
+5. Add environment variables:
+
+| Key | Value |
+|-----|-------|
+| `SECRET_KEY` | Any long random string |
+| `ADMIN_PASSWORD` | Password for `/admin` |
+| `ANTHROPIC_API_KEY` (and/or others) | Your AI key(s) for demo mode |
+
+6. Click **Deploy** — your app is live at `https://<service-name>.onrender.com`
+
+**Free plan notes:** the service sleeps after about 15 minutes idle and takes up to a minute to wake. The file system resets on restart, so SQLite data (new sign-ups and posts) returns to the committed `tradewatch.db`.
 
 ---
 
 ## 🔒 Security
 
-- API keys validated server-side using official Python SDKs
-- Keys stored only in Flask session — never in any database
+- AI keys are read from environment variables — never stored in code or sent to the browser
+- Keys that visitors enter are held only in their Flask session — never in the database
+- Admin password is set via the `ADMIN_PASSWORD` environment variable (admin login is disabled if unset)
 - Passwords hashed using Werkzeug security
 - `.env` is in `.gitignore` — never committed to GitHub
 
@@ -198,7 +219,7 @@ Pull requests welcome! Open an issue for bugs or feature ideas.
 
 ## 📄 License
 
- © 2026 TradeWatch AI
+© 2026 TradeWatch AI
 
 ---
 
@@ -211,4 +232,4 @@ Pull requests welcome! Open an issue for bugs or feature ideas.
 [Groq SDK](https://github.com/groq/groq-python) ·
 [D3.js](https://d3js.org/) ·
 [Chart.js](https://www.chartjs.org/) ·
-[Railway](https://railway.app)
+[Render](https://render.com)
