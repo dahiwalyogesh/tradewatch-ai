@@ -9,7 +9,7 @@
 
 ## 🚀 Live Demo
 
-**👉 [tradewatch-ai.up.railway.app](https://tradewatch-ai.up.railway.app)**
+**👉 [tradewatch-ai.onrender.com](https://tradewatch-ai.onrender.com)**
 
 > Use your own free API key from Groq (free) or Google Gemini (free) to try all features.
 
