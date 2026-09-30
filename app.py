@@ -286,6 +286,12 @@ PROVIDERS = {
     "groq":    {"name": "Llama 3",      "company": "Groq",      "model": MODELS["groq"],          "free": True,  "url": "https://console.groq.com"},
 }
 
+def providers_with_status():
+    """Provider list plus whether the server holds a key for each."""
+    return {k: {**v, "server_key": bool(server_key(k))}
+            for k, v in PROVIDERS.items()}
+
+
 CURRENCIES = ["USD","EUR","GBP","JPY","CNY","INR","AUD","CAD"]
 TIMELINES  = ["Immediate","1-3 months","3-6 months","6-12 months","Ongoing supply"]
 
@@ -297,7 +303,7 @@ TIMELINES  = ["Immediate","1-3 months","3-6 months","6-12 months","Ongoing suppl
 def index():
     return render_template("index.html",
         products=PRODUCTS, industries=INDUSTRIES,
-        countries=COUNTRIES, providers=PROVIDERS,
+        countries=COUNTRIES, providers=providers_with_status(),
         currencies=CURRENCIES, timelines=TIMELINES,
     )
 
@@ -639,8 +645,7 @@ def email_digest():
 
 @app.route("/api/providers")
 def get_providers():
-    return jsonify({k: {**v, "server_key": bool(server_key(k))}
-                    for k, v in PROVIDERS.items()})
+    return jsonify(providers_with_status())
 
 # ================================================================
 #  TradeWatch — Admin Dashboard Routes
