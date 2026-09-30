@@ -8,7 +8,7 @@
 
 ## 🚀 Live Demo
 
-**👉 [tradewatch-ai.onrender.com](https://tradewatch-ai.onrender.com)**
+**👉 [tradewatch-ai-2.onrender.com](https://tradewatch-ai-2.onrender.com)**
 
 > No API key or sign-up needed — the demo opens straight into the app.
 > Hosted on a free plan, so the first visit may take up to a minute while the server wakes up.
