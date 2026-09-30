@@ -83,7 +83,9 @@ function selectProvider(key) {
     gemini: "AIza...",
     groq:   "gsk_...",
   };
-  document.getElementById("api-key-input").placeholder = hints[key] || "Paste your API key here...";
+  const isDemo = PROVIDERS[key] && PROVIDERS[key].server_key;
+  document.getElementById("api-key-input").placeholder =
+    isDemo ? "Leave blank to use the demo key" : (hints[key] || "Paste your API key here...");
 }
 
 // ─────────────────────────────────────────
@@ -117,6 +119,31 @@ async function startApp() {
 function showApiScreen() {
   document.getElementById("home-page").style.display = "none";
   document.getElementById("api-screen").style.display = "flex";
+
+  // Mark providers that have a demo key, pre-select one, and offer a way back
+  const demo = DEMO_ORDER.find(k => PROVIDERS[k] && PROVIDERS[k].server_key);
+  document.querySelectorAll(".provider-card").forEach(c => {
+    const p = PROVIDERS[c.dataset.provider];
+    if (p && p.server_key && !c.querySelector(".prov-demo")) {
+      const tag = document.createElement("span");
+      tag.className = "prov-free prov-demo";
+      tag.textContent = "DEMO";
+      c.prepend(tag);
+    }
+  });
+  if (demo) {
+    selectProvider(PROVIDERS[state.provider] && PROVIDERS[state.provider].server_key ? state.provider : demo);
+    const btn = document.getElementById("api-submit-btn");
+    if (btn && !document.getElementById("demo-back-btn")) {
+      const back = document.createElement("button");
+      back.id = "demo-back-btn";
+      back.className = btn.className;
+      back.style.marginTop = "10px";
+      back.textContent = "Continue with demo (no key needed) →";
+      back.onclick = () => { document.getElementById("api-screen").style.display = "none"; startApp(); };
+      btn.insertAdjacentElement("afterend", back);
+    }
+  }
 }
 
 async function submitApiKey() {
