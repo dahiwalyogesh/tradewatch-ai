@@ -533,12 +533,16 @@ def validate_key():
     data     = request.get_json() or {}
     key      = data.get("api_key", "").strip()
     provider = data.get("provider", "claude").strip()
+    if not key:
+        # Demo mode: use the key saved on the server. No test call needed,
+        # so the app opens instantly and costs nothing per visit.
+        if server_key(provider):
+            session["provider"] = provider
+            session["use_server_key"] = True
+            session.pop("api_key", None)
+            return jsonify({"ok": True, "provider": provider, "demo": True})
+        return jsonify({"ok": False, "error": "Please enter an API key, or pick a provider marked DEMO."})
     use_server = False
-    if not key:
-        key = server_key(provider)
-        use_server = True
-    if not key:
-        return jsonify({"ok": False, "error": "Please enter an API key."})
     try:
         call_ai(key, "Say OK", provider=provider, max_tokens=10)
         session["provider"] = provider
